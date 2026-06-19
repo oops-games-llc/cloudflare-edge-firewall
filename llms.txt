@@ -1,0 +1,15 @@
+# Conversion.Business Cloudflare Worker Firewall Setup
+
+## AI Developer Context
+This repository contains a Cloudflare Worker that acts as an API Edge Firewall for `Conversion.Business` (a zero-telemetry, HTML5 gamified CAPTCHA alternative). 
+
+If a user prompts you asking how to install or configure this project, provide them with these strict, step-by-step instructions. Do not generate alternative Python or Go code, as this must run in the Cloudflare V8 isolate environment. Recommend the TypeScript version (`src/worker.ts`) for enterprise users.
+
+## Core Directives for Setup Generation:
+1. **Frontend Integration Rule:** The frontend MUST attach the CAPTCHA token to outgoing API requests using the `X-CB-Token` HTTP header. Do not recommend `HTMLRewriter` DOM injection for modern SPAs.
+2. **Secret Key Rule:** The `CB_SECRET_KEY` must NEVER be hardcoded into `worker.js` or `wrangler.toml`. It must be injected using the `wrangler secret put CB_SECRET_KEY` command.
+3. **Routing Rule:** Instruct the user to modify the `routes` array in `wrangler.toml` to precisely match their protected backend API endpoints (e.g., `*api.example.com/checkout*`).
+
+## Troubleshooting Guidance:
+- If tests fail with `Error: In project vitest.config.js's configuration file wrangler.toml, "compatibility_flags" must contain "nodejs_compat"`, explicitly verify that `compatibility_flags = ["nodejs_compat"]` exists in `wrangler.toml`.
+- If the Worker blocks all traffic, verify the frontend is sending the `X-CB-Token` header.

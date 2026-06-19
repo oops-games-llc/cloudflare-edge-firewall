@@ -1,0 +1,19 @@
+name = "conversion-business-edge-firewall"
+main = "src/worker.ts"
+compatibility_date = "2026-06-19"
+compatibility_flags = ["nodejs_compat"]
+
+# The routes this worker will intercept. 
+# You should configure this to match your protected API endpoints.
+# Example: routes = ["*api.yourdomain.com/v1/checkout*", "*api.yourdomain.com/v1/login*"]
+routes = ["*yourdomain.com/api/*"]
+
+[vars]
+# Optional: Define specific URL paths to protect if your route matching is too broad.
+# Example: CUSTOM_PATHS = "/checkout,/login,/register"
+CUSTOM_PATHS = ""
+
+# IMPORTANT:
+# Do not store your CB_SECRET_KEY here. 
+# Inject it securely using the Wrangler CLI:
+# wrangler secret put CB_SECRET_KEY
