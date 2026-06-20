@@ -7,8 +7,12 @@ export interface Env {
   CUSTOM_PATHS?: string;
 }
 
-interface VerifyResponse {
-  success: boolean;
+function hexToUint8Array(hexString: string): Uint8Array {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+  return bytes;
 }
 
 export default {
@@ -26,9 +30,9 @@ export default {
       }
     }
 
-    const token = request.headers.get("X-CB-Token");
+    const tokenBase64 = request.headers.get("X-CB-Token");
 
-    if (!token) {
+    if (!tokenBase64) {
       return new Response(JSON.stringify({ error: "Missing CAPTCHA validation token." }), {
         status: 403,
         headers: { "Content-Type": "application/json" }
@@ -36,20 +40,43 @@ export default {
     }
 
     try {
-      const verifyResponse = await fetch("https://api.conversion.business/v1/verify", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          secret: env.CB_SECRET_KEY,
-          response: token
-        })
-      });
+      // Decode Base64 token
+      const tokenStr = atob(tokenBase64);
+      const tokenData = JSON.parse(tokenStr);
+      const { payload, signature } = tokenData;
 
-      const verifyData = (await verifyResponse.json()) as VerifyResponse;
+      if (!payload || !signature) {
+         throw new Error("Invalid token format.");
+      }
 
-      if (!verifyData.success) {
+      // Replay Attack Prevention (5-minute TTL)
+      const parsedPayload = JSON.parse(payload);
+      if (Date.now() - parsedPayload.timestamp > 5 * 60 * 1000) {
+        return new Response(JSON.stringify({ error: "CAPTCHA token expired." }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // Local Zero-Latency Web Crypto HMAC Validation
+      const encoder = new TextEncoder();
+      const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(env.CB_SECRET_KEY),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+      );
+
+      const signatureBytes = hexToUint8Array(signature);
+      const isValid = await crypto.subtle.verify(
+        'HMAC',
+        key,
+        signatureBytes,
+        encoder.encode(payload)
+      );
+
+      if (!isValid) {
         return new Response(JSON.stringify({ error: "CAPTCHA verification failed. Bot detected." }), {
           status: 403,
           headers: { "Content-Type": "application/json" }
@@ -62,8 +89,11 @@ export default {
       return fetch(pristineRequest);
 
     } catch (error) {
-      console.error("Conversion.Business API Error:", error);
-      return fetch(request);
+      console.error("Conversion.Business Firewall Error:", error);
+      return new Response(JSON.stringify({ error: "Malformed CAPTCHA token." }), {
+         status: 403,
+         headers: { "Content-Type": "application/json" }
+      });
     }
   },
 };

@@ -4,17 +4,26 @@ This Cloudflare Worker acts as an edge-deployed API Gateway Firewall. It interce
 
 If the token is invalid (bot traffic), the Worker drops the connection at the network edge with a `403 Forbidden` response. The bot never reaches your origin server, saving you massive database load and bandwidth.
 
+## Zero-Latency Edge Cryptography
+Unlike legacy CAPTCHAs that require the Edge Worker to make an external `fetch` to verify the token (adding 50ms+ latency and creating a single point of failure), Conversion.Business uses native Web Crypto API (`crypto.subtle`) to locally verify the HMAC SHA-256 signature instantly inside the V8 isolate.
+
 ## 1. Frontend Integration
 
-Your frontend team must integrate the Conversion.Business widget natively using our Javascript boilerplates. When the user solves the gamified CAPTCHA, your frontend must attach the validation token to outgoing API requests using the custom `X-CB-Token` HTTP header.
+Your frontend team must integrate the Conversion.Business widget natively using our Javascript boilerplates. When the user solves the gamified CAPTCHA, your frontend must attach the validation payload and signature to outgoing API requests as a Base64-encoded string using the custom `X-CB-Token` HTTP header.
 
 ```javascript
 // Example Frontend API Call
+const tokenObj = {
+    payload: event.data.payload,
+    signature: event.data.signature
+};
+const base64Token = btoa(JSON.stringify(tokenObj));
+
 fetch('https://api.yourdomain.com/v1/checkout', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'X-CB-Token': tokenFromWidget // The token received after completing the game
+        'X-CB-Token': base64Token // The Base64 encoded {payload, signature}
     },
     body: JSON.stringify(checkoutData)
 });
