@@ -35,12 +35,13 @@ To deploy this firewall to your Cloudflare network:
 
 1. Clone this repository.
 2. Install dependencies: `npm install`
-3. Edit `wrangler.toml` and set the `routes` array to match your protected API endpoints.
-4. Securely add your Conversion.Business Secret Key to Cloudflare's encrypted memory:
+3. Rename the template configuration file: `mv wrangler.template.toml wrangler.toml`
+4. Edit `wrangler.toml` and set the `routes` array to match your protected API endpoints.
+5. Securely add your Conversion.Business Secret Key to Cloudflare's encrypted memory:
    ```bash
    npx wrangler secret put CB_SECRET_KEY
    ```
-5. Deploy to the edge:
+6. Deploy to the edge:
    ```bash
    npm run deploy
    ```
